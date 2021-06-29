@@ -1,0 +1,37 @@
+{
+  "name": "hyper-gateway-ftp",
+  "version": "1.0.0",
+  "description": "Hypercore Protocol exposed as an FTP server which can be mounted as a network drive.",
+  "main": "index.js",
+  "scripts": {
+    "test": "node test"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/RangerMauve/hyper-gateway-ftp.git"
+  },
+  "keywords": [
+    "hypercore",
+    "hyper",
+    "gateway",
+    "ftp",
+    "drive",
+    "mount"
+  ],
+  "author": "rangermauve <ranger@mauve.moe> (https://mauve.moe/)",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/RangerMauve/hyper-gateway-ftp/issues"
+  },
+  "homepage": "https://github.com/RangerMauve/hyper-gateway-ftp#readme",
+  "dependencies": {
+    "ftpd": "^0.2.16",
+    "node-fetch": "^2.6.1",
+    "stat-mode": "^0.2.2",
+    "yargs": "^17.0.1"
+  },
+  "devDependencies": {
+    "basic-ftp": "^4.6.6",
+    "tape": "^5.2.2"
+  }
+}
