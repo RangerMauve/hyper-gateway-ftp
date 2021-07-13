@@ -94,6 +94,7 @@ async function createServer ({
 
       // Seems only these are absolutely necessary
       const stat = {
+        writable,
         mode: 0,
         mtime,
         ctime,
@@ -121,9 +122,11 @@ async function createServer ({
 
   function unlink (path, cb) {
     console.log('unlink', path, cb)
+    cb(new Error('Not implemented'))
   }
   function rename (fromPath, toPath, cb) {
     console.log('rename', fromPath, toPath, cb)
+    cb(new Error('Not implemented'))
   }
 
   async function readdir (path, cb) {
@@ -152,9 +155,11 @@ async function createServer ({
   }
   function mkdir (path, cb) {
     console.log('mkdir', path, cb)
+    cb(new Error('Not implemented'))
   }
   function rmdir (path, cb) {
     console.log('rmdir', path, cb)
+    cb(new Error('Not implemented'))
   }
 
   function createReadStream (path, { fd } = {}) {
@@ -180,6 +185,31 @@ async function createServer ({
   }
   function createWriteStream (path, { fd } = {}) {
     console.log('createWriteStream', path, fd)
+    const stream = new PassThrough()
+    if (fd) {
+      const { path } = fd
+      return createReadStream(path)
+    } else {
+      process.nextTick(() => {
+        const url = `${gateway}/hyper${path}`
+        fetch(url, {
+          method: 'PUT',
+          body: stream
+        }).then(async (response) => {
+          if (!response.ok) {
+            const errorText = await response.text()
+            console.log(errorText)
+            throw new Error(errorText)
+          }
+          await response.text()
+        }).catch((e) => {
+          stream.destroy(e)
+        })
+        stream.emit('open')
+      })
+    }
+
+    return stream
   }
 
   // Create an FD for readstream and writestream
@@ -189,12 +219,14 @@ async function createServer ({
       if (err) return cb(err)
       const isDirectory = stat.isDirectory()
       if (isDirectory) return cb(new Error('Cannot open directory'))
+      if (mode.includes('w') && !stat.writable) return cb(new Error('Cannot write'))
       const fd = { path, mode }
       cb(null, fd)
     })
   }
   function close (fd, cb) {
     console.log('close', fd, cb)
+    cb(null)
   }
 
   const ftp = new ftpd.FtpServer(DEFAULT_HOST, {
@@ -228,6 +260,8 @@ async function createServer ({
   })
 
   console.log('Listening', port)
+
+  ftp.debugging = 4
 
   return ftp
 }

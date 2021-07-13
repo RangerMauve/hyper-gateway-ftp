@@ -1,6 +1,6 @@
 const test = require('tape')
 const { Client } = require('basic-ftp')
-const { PassThrough } = require('stream')
+const { PassThrough, Readable } = require('stream')
 
 const { createServer } = require('./')
 
@@ -41,6 +41,22 @@ test('Create server and load a file', async (t) => {
     ])
 
     t.ok(indexContent, 'Got index html content')
+
+    const exampleText = 'Hello World'
+    const exampleStream = Readable.from(toGenerator(exampleText))
+    await client.uploadFrom(exampleStream, '/example/example.txt')
+
+    t.pass('Able to upload')
+
+    const exampleContentStream = new PassThrough()
+    const exampleDownloadProgress = client.downloadTo(exampleContentStream, 'example/example.txt')
+
+    const [exampleContent] = await Promise.all([
+      readContents(exampleContentStream),
+      exampleDownloadProgress
+    ])
+
+    t.equal(exampleContent, exampleText, 'File got successfully uploaded')
   } finally {
     server.close()
     client.close()
@@ -54,4 +70,8 @@ async function readContents (stream) {
   }
 
   return content
+}
+
+async function * toGenerator (contents) {
+  yield Buffer.from(contents)
 }
