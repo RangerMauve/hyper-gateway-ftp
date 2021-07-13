@@ -3,17 +3,20 @@ const ftpd = require('ftpd')
 const Mode = require('stat-mode')
 const { Readable, PassThrough } = require('stream')
 
-const DEFAULT_PORT = 6669
-const DEFAULT_HOST = `127.0.0.1:${DEFAULT_PORT}`
+const DEFAULT_PORT = 4387 // HFTP on a phone dialpad
+const DEFAULT_HOST = '127.0.0.1'
 const DEFAULT_GATEWAY = 'http://localhost:4973'
-
 module.exports = {
+  DEFAULT_PORT,
+  DEFAULT_HOST,
+  DEFAULT_GATEWAY,
   createServer
 }
 
 async function createServer ({
   port = DEFAULT_PORT,
   gateway = DEFAULT_GATEWAY,
+  host = DEFAULT_HOST,
   ...opts
 } = {}) {
   const fs = {
@@ -45,7 +48,6 @@ async function createServer ({
   }
 
   async function stat (path, cb) {
-    console.log('stat', path, cb)
     path = normalizePath(path)
     const split = path.split('/')
     try {
@@ -120,23 +122,25 @@ async function createServer ({
     }
   }
 
-  function unlink (path, cb) {
-    console.log('unlink', path, cb)
-    cb(new Error('Not implemented'))
+  async function unlink (path, cb) {
+    path = normalizePath(path)
+    const url = `${gateway}/hyper${path}?noResolve`
+    try {
+      const response = await fetch(url, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Not Found')
+    } catch (e) {
+      cb(e, null)
+    }
   }
   function rename (fromPath, toPath, cb) {
-    console.log('rename', fromPath, toPath, cb)
     cb(new Error('Not implemented'))
   }
 
   async function readdir (path, cb) {
     path = normalizePath(path)
 
-    console.log('readdir', path, cb)
-
     if (path === '/') {
       const files = [...seen]
-      console.log('Root', files)
       return cb(null, files)
     }
 
@@ -146,24 +150,34 @@ async function createServer ({
       const response = await fetch(url)
       const files = await response.json()
       trackDomain(path)
-      console.log('files', files)
       cb(null, files)
     } catch (err) {
-      console.log(err)
       cb(err)
     }
   }
-  function mkdir (path, cb) {
-    console.log('mkdir', path, cb)
-    cb(new Error('Not implemented'))
+  async function mkdir (path, cb) {
+    path = normalizePath(path)
+    if (!path.endsWith('/')) path = path + '/'
+    const url = `${gateway}/hyper${path}?noResolve`
+    try {
+      const response = await fetch(url, { method: 'PUT' })
+      if (!response.ok) throw new Error(await response.text())
+    } catch (e) {
+      cb(e, null)
+    }
   }
-  function rmdir (path, cb) {
-    console.log('rmdir', path, cb)
-    cb(new Error('Not implemented'))
+  async function rmdir (path, cb) {
+    path = normalizePath(path)
+    const url = `${gateway}/hyper${path}?noResolve`
+    try {
+      const response = await fetch(url, { method: 'DELETE' })
+      if (!response.ok) throw new Error('Not Found')
+    } catch (e) {
+      cb(e, null)
+    }
   }
 
   function createReadStream (path, { fd } = {}) {
-    console.log('createReadStream', path, fd)
     const stream = new PassThrough()
     if (fd) {
       const { path } = fd
@@ -184,11 +198,10 @@ async function createServer ({
     return stream
   }
   function createWriteStream (path, { fd } = {}) {
-    console.log('createWriteStream', path, fd)
     const stream = new PassThrough()
     if (fd) {
       const { path } = fd
-      return createReadStream(path)
+      return createWriteStream(path)
     } else {
       process.nextTick(() => {
         const url = `${gateway}/hyper${path}`
@@ -198,7 +211,6 @@ async function createServer ({
         }).then(async (response) => {
           if (!response.ok) {
             const errorText = await response.text()
-            console.log(errorText)
             throw new Error(errorText)
           }
           await response.text()
@@ -214,7 +226,6 @@ async function createServer ({
 
   // Create an FD for readstream and writestream
   function open (path, mode, cb) {
-    console.log('open', path, cb)
     stat(path, (err, stat) => {
       if (err) return cb(err)
       const isDirectory = stat.isDirectory()
@@ -225,11 +236,10 @@ async function createServer ({
     })
   }
   function close (fd, cb) {
-    console.log('close', fd, cb)
     cb(null)
   }
 
-  const ftp = new ftpd.FtpServer(DEFAULT_HOST, {
+  const ftp = new ftpd.FtpServer(host + ':' + port, {
     getInitialCwd: function () {
       return '/'
     },
@@ -240,11 +250,9 @@ async function createServer ({
 
   ftp.on('client:connected', (connection) => {
     connection.on('command:user', (user, success) => {
-      console.log('User')
       success(fs)
     })
     connection.on('command:pass', (pass, success) => {
-      console.log({ pass })
       success('anonymous', fs)
     })
   })
@@ -259,9 +267,7 @@ async function createServer ({
     })
   })
 
-  console.log('Listening', port)
-
-  ftp.debugging = 4
+  ftp.debugging = 0
 
   return ftp
 }

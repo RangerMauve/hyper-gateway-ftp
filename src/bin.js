@@ -1,21 +1,29 @@
 #!/usr/bin/env node
 const yargs = require('yargs')
+const {
+  DEFAULT_PORT,
+  DEFAULT_HOST,
+  DEFAULT_GATEWAY,
+  createServer
+} = require('./')
 
 function runOptions (yargs) {
   return yargs
     .option('port', {
       describe: 'The port to run the server on',
-      default: 6669
+      default: DEFAULT_PORT
+    })
+    .option('host', {
+      describe: 'The hostname to listen on',
+      default: DEFAULT_HOST
     })
     .option('gateway', {
       describe: 'The URL of the hyperdrive-gateway',
-      default: 'http://localhost:4973'
+      default: DEFAULT_GATEWAY
     })
 }
 
 async function runServer (args) {
-  const { createServer } = require('./')
-
   const server = await createServer(args)
 
   process.on('SIGINT', () => {

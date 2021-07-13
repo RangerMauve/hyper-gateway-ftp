@@ -1,29 +1,27 @@
 const test = require('tape')
 const { Client } = require('basic-ftp')
 const { PassThrough, Readable } = require('stream')
+const crypto = require('crypto')
+const getPort = require('get-port')
 
 const { createServer } = require('./')
 
 test('Create server and load a file', async (t) => {
-  const host = 'localhost'
-  const port = 6669
+  const host = '127.0.0.1'
+  const port = await getPort()
 
-  const server = await createServer()
+  const server = await createServer({ host, port })
   const client = new Client()
   try {
-    console.log('Made client')
-
-    const access = await client.access({
+    await client.access({
       host,
       port,
-      user: 'Anon',
+      user: 'anonymous',
       password: 'password',
       secure: false
     })
 
-    client.ftp.verbose = true
-
-    console.log({ access })
+    client.ftp.verbose = false
 
     const files = await client.list('blog.mauve.moe/')
     t.ok(files.length, 'Listed some files')
@@ -42,7 +40,8 @@ test('Create server and load a file', async (t) => {
 
     t.ok(indexContent, 'Got index html content')
 
-    const exampleText = 'Hello World'
+    const exampleText = 'Hello World? ' + crypto.randomBytes(2).toString('hex')
+
     const exampleStream = Readable.from(toGenerator(exampleText))
     await client.uploadFrom(exampleStream, '/example/example.txt')
 
