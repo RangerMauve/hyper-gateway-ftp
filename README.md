@@ -3,6 +3,8 @@ Hypercore Protocol exposed as an FTP server which can be mounted as a network dr
 
 Note: You need to have a [hyper-gateway](https://github.com/RangerMauve/hyper-gateway) server running somewhere that's accessible by the ftp server. Running both on localhost is the easiest method.
 
+By default you can access the gateway at ftp://127.0.0.1:4387
+
 ## CLI
 
 ```
